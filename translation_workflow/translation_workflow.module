@@ -1,0 +1,419 @@
+<?php
+
+/**
+ * @file
+ * Translation workflow module hooks.
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Url;
+use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
+use Drupal\tmgmt\Entity\Translator;
+use Drupal\tmgmt\TMGMTException;
+use Drupal\translation_workflow\Entity\MultipleTargetLanguageJob;
+use Drupal\translation_workflow\Entity\MultipleTargetLanguageJobItem;
+use Drupal\translation_workflow\Entity\ViewsData\MultipleTargetLanguageJobItemViewsData;
+use Drupal\translation_workflow\Form\MultipleTargetLanguageJobItemForm;
+use Drupal\translation_workflow\MailType;
+use Drupal\translation_workflow\MultipleTargetLanguageConfigSourcePluginUi;
+use Drupal\translation_workflow\MultipleTargetLanguageLocaleSourcePluginUi;
+use Drupal\translation_workflow\MutipleTargetLanguageContentEntitySourcePluginUi;
+
+/**
+ * Gets a list of allowed languages for translation.
+ *
+ * @return string[]
+ *   Allowed languages.
+ *
+ * @todo it should be done with config form in a future version.
+ */
+function osha_enabled_language_list() {
+  return [
+    'en',
+    'bg',
+    'cs',
+    'da',
+    'de',
+    'el',
+    'es',
+    'et',
+    'fi',
+    'hr',
+    'fr',
+    'hu',
+    'is',
+    'it',
+    'lv',
+    'lt',
+    'nl',
+    'mt',
+    'no',
+    'pl',
+    'pt-pt',
+    'ro',
+    'sk',
+    'sl',
+    'sv',
+  ];
+}
+
+/**
+ * Implements hook_mail().
+ */
+function translation_workflow_mail($key, &$message, $params) {
+
+  //@ $message['headers']['Content-Type'] = SWIFTMAILER_FORMAT_HTML;
+  $message['headers']['Content-Type'] = 'text/html';
+
+  /**
+   * @var \Drupal\translation_workflow\Entity\MultipleTargetLanguageJob $job
+   */
+  $job = $params['job'] ?? NULL;
+  /**
+   * @var \Drupal\translation_workflow\Entity\MultipleTargetLanguageJobItem $jobItem
+   */
+  $jobItem = $params['jobItem'] ?? NULL;
+  $node = NULL;
+  if (is_null($job) && isset($params['jobItem'])) {
+    $job = $params['jobItem']->getJob();
+    $node = Node::load($jobItem->getItemId());
+  }
+  $subject = '';
+  $body = '';
+  $tokenParams = [
+    'tmgmt_job_multiple_target' => $job,
+    'user' => Drupal::currentUser(),
+    'tmgmt_job_item' => $jobItem,
+    'node' => $node,
+  ];
+  switch ($key) {
+    case MailType::JOB_ON_TRANSLATION:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'A new translation job (Translation job <a href="[tmgmt_job_multiple_target:url]">#[tmgmt_job_multiple_target:id]</a>)
+           in osha.europa.eu has been created.',
+        'Thank you',
+      ];
+      break;
+
+    case MailType::JOB_ITEM_REVIEW:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'Note that "[node:title]" (type [node:type]) Translation job <a href="[tmgmt_job_multiple_target:url]">
+            #[tmgmt_job_multiple_target:id]</a> in osha.europa.eu has been TRANSLATED in [tmgmt_job_item:target_language].',
+        'Thank you',
+      ];
+      break;
+
+    case MailType::JOB_ITEM_VALIDATION_REQUIRED:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'There is new content translated that requires your VALIDATION. Please check "[node:title]"
+            (type [node:type]) from Translation job <a href="[tmgmt_job_multiple_target:url]">#[tmgmt_job_multiple_target:id]</a>
+            [tmgmt_job_item:target_language] in osha.europa.eu.',
+        'Thank you',
+      ];
+      break;
+
+    case MailType::JOB_ITEM_VALIDATED:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'Note that "[node:title]" (type [node:type]) from Translation job <a href="[tmgmt_job_multiple_target:url]">#[tmgmt_job_multiple_target:id]</a>
+            in osha.europa.eu has been VALIDATED in [tmgmt_job_item:target_language].',
+        'Thank you',
+      ];
+      break;
+
+    case MailType::JOB_ITEM_ABORTED:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'Note that "[node:title]" (type [node:type]) from Translation job <a href="[tmgmt_job_multiple_target:url]">#[tmgmt_job_multiple_target:id]</a>
+            in osha.europa.eu has been REJECTED in [tmgmt_job_item:target_language].',
+        'Thank you',
+      ];
+      break;
+
+    case MailType::JOB_ITEM_ACCEPTED:
+      $subject = t('[OSHA Website] CMW: Translation job #[tmgmt_job_multiple_target:id]');
+      $body = [
+        'Dear "[user:name]",',
+        'A new translation job <a href="[tmgmt_job_multiple_target:url]">#[tmgmt_job_multiple_target:id]</a> in osha.europa.eu has been created.',
+        'Thank you',
+      ];
+      break;
+  }
+  $tokenService = Drupal::token();
+  $message['subject'] = $tokenService->replace($subject, $tokenParams);
+  $message['body'] = array_map(function ($text) use ($tokenService, $tokenParams) {
+    return Markup::create($tokenService->replace($text, $tokenParams) . '<br>');
+  }, $body);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function translation_workflow_form_tmgmt_content_translate_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (isset($form['actions']['request'])) {
+    $form['actions']['request']['#submit'] = ['tmgmt_content_translate_form_submit'];
+  }
+}
+
+/**
+ * {@inheritdoc}
+ */
+function tmgmt_content_translate_form_submit(array &$form, FormStateInterface $form_state) {
+  /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
+  $entity = $form_state->get('entity');
+  $values = $form_state->getValues();
+  // Create the job object.
+  $translators = Translator::loadMultiple();
+  $job = MultipleTargetLanguageJob::create([
+    'source_language' => $entity->language(),
+    'target_languages' => [$values['languages']],
+    'uid' => \Drupal::currentUser()->id(),
+    'job_items' => [],
+    'translator' => reset($translators),
+  ]);
+
+  foreach (array_keys(array_filter($values['languages'])) as $langcode) {
+    try {
+      // Add the job item.
+      $item = $job->addItem('content', $entity->getEntityTypeId(), $entity->id());
+      $item->set('target_language', $langcode);
+      $item->save();
+      // Append this job to array of created jobs so we can redirect the user
+      // to a multistep checkout form if necessary.
+    }
+    catch (TMGMTException $e) {
+      watchdog_exception('tmgmt', $e);
+      $languages = \Drupal::languageManager()->getLanguages();
+      $target_lang_name = $languages[$langcode]->language;
+      \Drupal::messenger()
+        ->addError(t('Unable to add job item for target language %name. Make sure the source content is not empty.', ['%name' => $target_lang_name]));
+    }
+  }
+  \Drupal::service('tmgmt.job_checkout_manager')
+    ->checkoutAndRedirect($form_state, [$job]);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ */
+function translation_workflow_node_presave(NodeInterface $entity) {
+  foreach ($entity->getFields() as $field) {
+    $finalValue = '';
+    $fieldDefinition = $field->getFieldDefinition();
+    if (in_array($fieldDefinition->getType(), ['text_with_summary', 'text_long'])) {
+      if (!$field->isEmpty()) {
+        foreach ($field as $fieldElem) {
+          $fieldProperties = array_keys($fieldElem->getProperties());
+          if (in_array('value', $fieldProperties)) {
+            $finalValue = $fieldElem->getValue();
+            $finalValue['value'] = Drupal::service('translation_workflow.manage_tmgmt_elements')->addTmgmtElements($fieldElem->value);
+          }
+        }
+      }
+    }
+    if (!empty($finalValue)) {
+      $entity->set($field->getName(), $finalValue);
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function translation_workflow_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+
+  if ($form_state->has('tmgmt_cart')) {
+    $form['#validate'][] = 'translation_workflow_form_alter_validate';
+  }
+
+  //Avoid translate content in published or ready to publish states
+  if ($form_id == 'tmgmt_content_translate_form'){
+    $nodeValues = $form_state->getStorage();
+
+    if ($nodeValues["tmgmt_cart"]["item_type"]=='node'){
+      $state  = $nodeValues["entity"]->get('moderation_state')->getString();
+      if ($state != 'published' && $state !='ready_to_publish'){
+        unset($form["actions"]);
+      }
+    }
+  }
+}
+
+/**
+ * Validate that items inside a job exists.
+ */
+function translation_workflow_form_alter_validate(&$form, FormStateInterface $form_state) {
+  if ($form_state->has('tmgmt_cart')) {
+    $cart_info = $form_state->get('tmgmt_cart');
+    if (!empty($cart_info['plugin']) && !empty($cart_info['item_type']) && $form_state->getValue('items')) {
+      $source_items = array_filter($form_state->getValue('items'));
+      $item_type = $cart_info['item_type'];
+      $plugin = $cart_info['plugin'];
+    }
+    elseif (!empty($cart_info['plugin']) && !empty($cart_info['item_type']) && !empty($cart_info['item_id'])) {
+      $source_items = [$cart_info['item_id']];
+      $item_type = $cart_info['item_type'];
+      $plugin = $cart_info['plugin'];
+    }
+    else {
+      return;
+    }
+    $existingJobItems = MultipleTargetLanguageJobItem::jobItemExists(['item_id' => $source_items]);
+    if (!empty($existingJobItems)) {
+      \Drupal::messenger()
+        ->addWarning(t('Some of the added elements are already in the cart.'));
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function translation_workflow_form_views_exposed_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $storage = $form_state->getStorage();
+  if (isset($storage['view'])) {
+    $view = $storage['view'];
+    switch ($view->id()) {
+      case 'translation_workflow_jobs_overview':
+        if (isset($form['state'])) {
+          $states = ['' => t('- Any -')] + MultipleTargetLanguageJob::getStates();
+          $form['state'] = [
+            '#type' => 'select',
+            '#options' => $states,
+            '#default_value' => reset($states),
+          ];
+        }
+        if (isset($form['priority'])) {
+          $priorities = ['' => t('- Any -')] + MultipleTargetLanguageJob::getPriorities();
+          $form['priority'] = [
+            '#type' => 'select',
+            '#options' => $priorities,
+            '#default_value' => reset($priorities),
+          ];
+        }
+        break;
+
+      case 'tmgmt_job_items':
+        if ($view->current_display == 'submitted' && isset($form['translator_state'])) {
+          $states = ['' => t('- Any -')] + MultipleTargetLanguageJobItem::getStates();
+          $form['translator_state'] = [
+            '#type' => 'select',
+            '#options' => $states,
+            '#default_value' => reset($states),
+          ];
+        }
+        break;
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_create().
+ */
+function translation_workflow_tmgmt_job_multiple_target_create(EntityInterface $entity) {
+  // If we are creating a job and added a priority value it is setted on entity.
+  if ($entity instanceof MultipleTargetLanguageJob) {
+    $priority = Drupal::request()->get('priority');
+    if ($priority) {
+      $entity->set('priority', $priority);
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_base_field_info_alter().
+ */
+function translation_workflow_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'tmgmt_job_item') {
+    $fields["tjid"]->setSetting('target_type', 'tmgmt_job_multiple_target');
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function translation_workflow_entity_type_alter(array &$entity_types) {
+  /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+  if (isset($entity_types['tmgmt_job_item'])) {
+    // $entity_types['tmgmt_job_item']->setHandlerClass('access', MultipleTargetLanguageJobItemAccessControlHandler::class);
+    // $entity_types['tmgmt_job_item']->setHandlerClass('list_builder', MultipleTargetLanguageJobItemListBuilder::class);
+    $entity_types['tmgmt_job_item']->setHandlerClass('views_data', MultipleTargetLanguageJobItemViewsData::class);
+    $entity_types['tmgmt_job_item']->setHandlerClass('form', [
+      'edit' => MultipleTargetLanguageJobItemForm::class,
+    ]);
+  }
+}
+
+/**
+ * Implements hook_tmgmt_file_format_plugin_info_alter().
+ */
+function translation_workflow_tmgmt_file_format_plugin_info_alter(&$file_formats) {
+}
+
+/**
+ * Implements hook_tmgmt_translator_plugin_info_alter().
+ */
+function translation_workflow_tmgmt_translator_plugin_info_alter(&$info) {
+}
+
+/**
+ * Implements hook_tmgmt_source_plugin_info_alter().
+ */
+function translation_workflow_tmgmt_source_plugin_info_alter(&$info) {
+  foreach ($info as $pluginName => &$pluginInfo) {
+    $uiClass = $pluginInfo['ui'];
+    $class = $pluginInfo['class'];
+    switch ($pluginName) {
+      case 'content':
+        $uiClass = MutipleTargetLanguageContentEntitySourcePluginUi::class;
+        // $class = MultipleTargetLanguageContentEntitySource::class;
+        break;
+
+      case 'locale':
+        $uiClass = MultipleTargetLanguageLocaleSourcePluginUi::class;
+        break;
+
+      case 'config':
+        $uiClass = MultipleTargetLanguageConfigSourcePluginUi::class;
+    }
+    $info[$pluginName]['ui'] = $uiClass;
+    $info[$pluginName]['class'] = $class;
+  }
+}
+
+/**
+ * Implements hook_entity_type_build().
+ */
+function translation_workflow_entity_type_build(array &$entity_types) {
+  if (isset($entity_types['tmgmt_job_item'])) {
+    $entity_types['tmgmt_job_item']->setClass(MultipleTargetLanguageJobItem::class);
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function translation_workflow_preprocess_breadcrumb(&$variables) {
+  if (isset($variables['links'])) {
+    /**
+     * @var \Drupal\Core\Link $link
+     */
+    foreach ($variables['links'] as $linkKey => $link) {
+      if ($link->getUrl()->getRouteName() == 'view.tmgmt_job_overview.page_1') {
+        $variables['links'][$linkKey]->setUrl(Url::fromRoute('view.translation_workflow_jobs_overview.page_1'));
+      }
+    }
+  }
+}
