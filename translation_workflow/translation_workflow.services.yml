@@ -1,0 +1,31 @@
+services:
+  translation_workflow.tmgmt.queue:
+    class: Drupal\translation_workflow\MultipleTargetLanguageJobQueue
+    decorates: tmgmt.queue
+    public: false
+    arguments: ['@translation_workflow.tmgmt.queue.inner']
+
+  translation_workflow.tmgmt.job_checkout_manager:
+    class: Drupal\translation_workflow\MultipleTargetLanguageJobCheckoutManager
+    decorates: tmgmt.job_checkout_manager
+    public: false
+    arguments: ['@translation_workflow.tmgmt.job_checkout_manager.inner', '@request_stack', '@tmgmt.queue', '@module_handler', '@config.factory', '@entity_type.manager']
+
+  translation_workflow.route_subscriber:
+    class: Drupal\translation_workflow\Routing\RouteSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  translation_workflow.notifications:
+    class: Drupal\translation_workflow\EventSubscriber\TranslationEventSubscriber
+    arguments: ['@plugin.manager.mail', '@translation_workflow.users_to_notify', '@language_manager', '@translation_workflow.manage_tmgmt_elements']
+    tags:
+      - { name: event_subscriber }
+
+  translation_workflow.users_to_notify:
+    class: Drupal\translation_workflow\UsersToNotify
+    arguments: ['@entity_type.manager']
+
+  translation_workflow.manage_tmgmt_elements:
+    class: Drupal\translation_workflow\TmgmtElementsUtils
+    arguments: ['@entity_type.manager']
