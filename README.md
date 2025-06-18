@@ -30,9 +30,6 @@ Moreover, since the EU-OSHA translation tool has been developed based on the Tra
 * Chaos Tools https://www.drupal.org/project/ctools .(_ctools_) 
 * Views Bulk Operations. (_views_bulk_operations_)
 * Content Translation https://www.drupal.org/docs/8/core/modules/content-translation . (_content_translation_)
-* Locale. (_locale_)
-* Internationalization/i18n (for string translation).
-* Entity translation (for the entity source).
 * Rules (for node translation) https://www.drupal.org/project/rules . (_rules_)
 
 ## How to install and how to use the translation workflow
