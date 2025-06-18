@@ -1,0 +1,14 @@
+translation_workflow.retranslate:
+  route_name: translation_workflow.retranslate
+  base_route: entity.node.canonical
+  title: Retranslate
+translation_workflow.languages:
+  route_name: translation_workflow.languages
+  title: 'Languages'
+  base_route: view.tmgmt_job_overview.page_1
+  weight: 105
+translation_workflow.notifications:
+  route_name: translation_workflow.notifications
+  title: 'Email Notifications'
+  base_route: view.tmgmt_job_overview.page_1
+  weight: 106
