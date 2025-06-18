@@ -1,3 +1,0 @@
-select_all:
-  js:
-    js/select_all.js: {}
