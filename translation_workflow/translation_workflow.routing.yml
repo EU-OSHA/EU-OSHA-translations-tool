@@ -1,0 +1,56 @@
+entity.tmgmt_job_multiple_target.canonical:
+  path: '/admin/translation_workflow/jobs/{tmgmt_job_multiple_target}'
+  defaults:
+    _entity_form: tmgmt_job_multiple_target.edit
+  requirements:
+    _entity_access: tmgmt_job_multiple_target.update
+
+entity.tmgmt_job_multiple_target.delete_form:
+  path: '/admin/translation_workflow/jobs/{tmgmt_job_multiple_target}/delete'
+  defaults:
+    _entity_form: tmgmt_job_multiple_target.delete
+  requirements:
+    _entity_access: tmgmt_job_multiple_target.delete
+
+entity.tmgmt_job_multiple_target.abort_form:
+  path: '/admin/translation_workflow/jobs/{tmgmt_job_multiple_target}/abort'
+  defaults:
+    _entity_form: tmgmt_job_multiple_target.abort
+  requirements:
+    _entity_access: tmgmt_job_multiple_target.update
+
+entity.tmgmt_job_multiple_target.resubmit_form:
+  path: '/admin/translation_workflow/jobs/{tmgmt_job_multiple_target}/resubmit'
+  defaults:
+    _entity_form: tmgmt_job_multiple_target.resubmit_form
+  requirements:
+    _entity_access: tmgmt_job_multiple_target.update
+
+translation_workflow.retranslate:
+  path: '/node/{node}/retranslate'
+  defaults:
+    _form: '\Drupal\translation_workflow\Form\MultipleTargetLanguageRetranslateForm'
+  requirements:
+    _permission: 'translate interface'
+    _entity_access: 'node.view'
+    node: \d+
+
+translation_workflow.languages:
+  path: '/admin/tmgmt/languages'
+  defaults:
+    _form: '\Drupal\translation_workflow\Form\LanguageSettingsForm'
+    _title: 'Available languages'
+  requirements:
+    _permission: 'administer site configuration'
+  options:
+    _admin_route: TRUE
+
+translation_workflow.notifications:
+  path: '/admin/tmgmt/notifications'
+  defaults:
+    _form: '\Drupal\translation_workflow\Form\NotificationsSettingsForm'
+    _title: 'Email notification settings'
+  requirements:
+    _permission: 'administer site configuration'
+  options:
+    _admin_route: TRUE

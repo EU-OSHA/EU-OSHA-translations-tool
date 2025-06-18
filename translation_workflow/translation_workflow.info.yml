@@ -1,0 +1,19 @@
+name: 'Translation workflow'
+description: 'Behaviors of translation workflow'
+core_version_requirement: ^8.8 || ^9 || ^10 || ^11
+version: 3.0.0
+package: 'Custom'
+type: module
+dependencies:
+  - tmgmt
+  - tmgmt_content
+  - tmgmt_file
+  - tmgmt_language_combination
+  - tmgmt_local
+  - tmgmt_locale
+  # Multilingual
+  - config_translation
+  - content_translation
+  - locale
+  # Core
+  - content_moderation

@@ -1,0 +1,12 @@
+select_all:
+  js:
+    js/select_all.js: {}
+
+styles:
+  css:
+    theme:
+      css/style.css: {}
+
+notifications_settings:
+  js:
+    js/notifications_settings.js: {}
