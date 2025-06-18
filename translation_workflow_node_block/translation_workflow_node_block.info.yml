@@ -1,8 +1,0 @@
-type: module
-name: Translation workflow node block
-description: 'Block node if it has been sent to translate.'
-package: Development
-core_version_requirement: ^8.8 || ^9 || ^10
-version: 2.0.0
-dependencies:
-  - translation_workflow
