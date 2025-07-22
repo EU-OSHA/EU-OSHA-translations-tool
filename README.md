@@ -48,4 +48,4 @@ Moreover, since the EU-OSHA translation tool has been developed based on the Tra
 
 ## How to install, how to configure and how to use the translation workflow
 For more information about how to install and use, please, check the documentation with the name
-"[EU-OSHA_translationToolGuideline_v3_1.pdf](https://github.com/EU-OSHA/EU-OSHA-translations-tool/EU-OSHA_translationToolGuideline_v3_1.pdf)"
+"[EU-OSHA_translationToolGuideline_v3_1.pdf](https://github.com/EU-OSHA/EU-OSHA-translations-tool/blob/main/EU-OSHA_translationToolGuideline_v3_1.pdf)"
