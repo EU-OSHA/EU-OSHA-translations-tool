@@ -80,7 +80,8 @@ class TranslationEventSubscriber implements EventSubscriberInterface {
     $notificationRoles = $this->tmtgmtElementsUtils->getNotificationRoles();
     $jobItemState = $translationJobItem->getState();
     $key = $this->getMailTypeFromJobItemState($jobItemState);
-    $to = $this->usersToNotify->getByRole($notificationRoles[$jobItemState]);
+    $roles = $notificationRoles[$jobItemState] ?? [];
+    $to = $this->usersToNotify->getByRole($roles);
 
     if ($jobItemState == MultipleTargetLanguageJobItem::STATE_ACCEPTED) {
       $itemId = $translationJobItem->getItemId();
